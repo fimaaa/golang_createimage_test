@@ -9,12 +9,12 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	"io/ioutil"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
-	"github.com/golang/freetype"
+	"github.com/fogleman/gg"
 
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/code93"
@@ -23,17 +23,14 @@ import (
 	"github.com/nfnt/resize"
 
 	"encoding/json"
-	"net/http"
-
-	"golang.org/x/text/width"
 )
 
-const PRINT_TYPE_TEXT = 0
-const PRINT_TYPE_BARCODE = 1
-const PRINT_TYPE_QRCODE = 2
-const PRINT_TYPE_IMAGE = 3
-const PRINT_TYPE_LINE = 4
-const PRINT_TYPE_AREA = 5
+const pType_TEXT = 0
+const pType_BARCODE = 1
+const pType_QRCODE = 2
+const pType_Image = 3
+const pType_LINE = 4
+const pType_AREA = 5
 const rowHeight = 32
 
 type printStep struct {
@@ -73,24 +70,25 @@ var (
 )
 
 func main() {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("For Response Step /Step, For Response Image /image"))
-	})
-	http.HandleFunc("/image", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(MakeLabelServiceType(true)))
-	})
-	http.HandleFunc("/step", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(MakeLabelServiceType(false)))
-	})
+	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("For Response Step /Step, For Response Image /image"))
+	// })
+	// http.HandleFunc("/image", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte(MakeLabelServiceType(true)))
+	// })
+	// http.HandleFunc("/step", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte(MakeLabelServiceType(false)))
+	// })
 
-	fmt.Println("server started at localhost:9000")
-	http.ListenAndServe(":9000", nil)
+	// fmt.Println("server started at localhost:9000")
+	// http.ListenAndServe(":9000", nil)
+	MakeLabelServiceType(true)
 }
 
 func MakeLabelServiceType(isImage bool) string {
 	stepLabelServiceType := []printStep{
 		{
-			PRINT_TYPE_IMAGE,
+			pType_Image,
 			0,
 			200,
 			0,
@@ -111,12 +109,12 @@ func MakeLabelServiceType(isImage bool) string {
 			false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			300,
 			576,
 			0,
 			(rowHeight) * 2,
-			2,
+			3,
 			3,
 			0,
 			48,
@@ -132,12 +130,12 @@ func MakeLabelServiceType(isImage bool) string {
 			false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			250,
 			300,
 			0,
 			(rowHeight) * 2,
-			2,
+			3,
 			3,
 			0,
 			24,
@@ -153,7 +151,7 @@ func MakeLabelServiceType(isImage bool) string {
 			false,
 		},
 		{
-			PRINT_TYPE_LINE,
+			pType_LINE,
 			0,
 			576,
 			(rowHeight * 2) + 5,
@@ -174,31 +172,31 @@ func MakeLabelServiceType(isImage bool) string {
 			true,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			200,
 			(rowHeight * 3),
 			(rowHeight * 5),
-			0, 0, 0,
+			3, 0, 0,
 			48,
 			0, 0, 0, 0,
 			"COP DS",
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			300,
 			576,
 			(rowHeight * 3),
 			(rowHeight * 5),
-			0, 0, 0,
+			3, 0, 0,
 			48,
 			0, 0, 0, 0,
 			"NEXTDAY",
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_LINE,
+			pType_LINE,
 			0,
 			576,
 			(rowHeight * 5) + 5,
@@ -209,12 +207,13 @@ func MakeLabelServiceType(isImage bool) string {
 			true,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
-			576,
+			200,
 			(rowHeight * 6),
 			(rowHeight * 7),
-			0, 0, 0,
+			3,
+			0, 0,
 			24,
 			1,
 			0, 0, 0,
@@ -222,12 +221,12 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			250,
 			576,
 			(rowHeight * 6),
 			(rowHeight * 7),
-			2,
+			3,
 			0, 0,
 			24,
 			1,
@@ -236,7 +235,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_QRCODE,
+			pType_QRCODE,
 			0,
 			200,
 			(rowHeight * 8),
@@ -248,7 +247,7 @@ func MakeLabelServiceType(isImage bool) string {
 			false,
 		},
 		{
-			PRINT_TYPE_AREA,
+			pType_AREA,
 			250,
 			576,
 			(rowHeight * 8),
@@ -256,10 +255,10 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, 0, 0, 0, 0, "", 0, 1, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			270,
-			576,
-			(rowHeight * 8),
+			571,
+			(rowHeight * 8) + 5,
 			(rowHeight * 10),
 			3,
 			3,
@@ -271,7 +270,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_LINE,
+			pType_LINE,
 			250,
 			576,
 			(rowHeight * 10) + 5,
@@ -282,9 +281,9 @@ func MakeLabelServiceType(isImage bool) string {
 			true,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			251,
-			576,
+			571,
 			(rowHeight * 11),
 			(rowHeight * 12),
 			3,
@@ -296,11 +295,11 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			251,
-			576,
+			571,
 			(rowHeight * 12),
-			(rowHeight * 13),
+			(rowHeight * 13) - 5,
 			3,
 			3,
 			0,
@@ -311,7 +310,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 14),
@@ -325,7 +324,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 16),
@@ -339,7 +338,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_LINE,
+			pType_LINE,
 			0,
 			576,
 			(rowHeight * 18) + 5,
@@ -350,7 +349,7 @@ func MakeLabelServiceType(isImage bool) string {
 			true,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 18),
@@ -363,7 +362,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 19),
@@ -375,7 +374,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 21),
@@ -387,7 +386,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_LINE,
+			pType_LINE,
 			0,
 			576,
 			(rowHeight * 23) + 5,
@@ -398,7 +397,7 @@ func MakeLabelServiceType(isImage bool) string {
 			true,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 24),
@@ -411,7 +410,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 25),
@@ -424,7 +423,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 26),
@@ -437,7 +436,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0, 0, 0, 0, false,
 		},
 		{
-			PRINT_TYPE_TEXT,
+			pType_TEXT,
 			0,
 			576,
 			(rowHeight * 28),
@@ -470,30 +469,31 @@ func drawCanvas(steps []printStep) string {
 	// lengthWOrd := 120
 	for _, step := range steps {
 		switch step.TypePrint {
-		case PRINT_TYPE_BARCODE:
+		case pType_BARCODE:
 			{
 				drawBarcode(rgba, step)
 			}
-		case PRINT_TYPE_QRCODE:
+		case pType_QRCODE:
 			{
 				drawQRcode(rgba, step)
 			}
-		case PRINT_TYPE_IMAGE:
+		case pType_Image:
 			{
 				drawImage(rgba, step)
 			}
-		case PRINT_TYPE_LINE:
+		case pType_LINE:
 			{
 				draw.Draw(rgba, image.Rect(step.StartX, step.StartY, step.EndX, step.EndY),
 					&image.Uniform{color.Black}, image.ZP, draw.Src)
 			}
-		case PRINT_TYPE_AREA:
+		case pType_AREA:
 			{
 				drawArea(rgba, step)
 			}
 		default:
 			{
-				drawText(rgba, step)
+				// drawText(rgba, step)
+				drawTextGG(rgba, step)
 			}
 		}
 	}
@@ -502,7 +502,7 @@ func drawCanvas(steps []printStep) string {
 	png.Encode(buf, rgba)
 	send_s3 := buf.Bytes()
 
-	saveImageToFile(rgba)
+	saveImageToFile(rgba, "test.png")
 
 	return base64.RawStdEncoding.EncodeToString(send_s3)
 }
@@ -562,76 +562,43 @@ func drawArea(rgba draw.Image, step printStep) {
 		&image.Uniform{color.White}, image.ZP, draw.Src)
 }
 
-func drawText(rgba draw.Image, step printStep) {
-	positionX := step.StartX
-	positionY := step.StartY
-	fg := image.Black
+func drawTextGG(rgba draw.Image, step printStep) {
+	dc := gg.NewContext(step.EndX-step.StartX, step.EndY-step.StartY)
 
-	fontBytes, err := ioutil.ReadFile(*fontReguler)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if step.Bold == 1 {
-		fontBytes, err = ioutil.ReadFile(*fontBold)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
-
-	f, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	c := freetype.NewContext()
-	c.SetDPI(*dpi)
-	c.SetFont(f)
-	c.SetClip(rgba.Bounds())
-	c.SetDst(rgba)
-	c.SetSrc(fg)
+	dc.DrawImage(image.Rect(0, 0, step.EndX-step.StartX, step.EndY-step.StartY), 0, 0)
+	dc.SetColor(color.Black)
 
 	// FontSize
 	fontSize := *size16
-	c.SetFontSize(*size2)
-	pt := freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size2)>>6))
 
 	if step.FontSize >= 73 {
 		fontSize = *size96
-		c.SetFontSize(*size96)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size96)>>6))
 	}
 	if step.FontSize >= 65 && step.FontSize < 73 {
 		fontSize = *size72
-		c.SetFontSize(*size72)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size72)>>6))
 	}
 	if step.FontSize >= 49 && step.FontSize < 65 {
 		fontSize = *size64
-		c.SetFontSize(*size64)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size64)>>6))
 	}
 	if step.FontSize >= 33 && step.FontSize < 49 {
 		fontSize = *size48
-		c.SetFontSize(*size48)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size48)>>6))
 	}
 	if step.FontSize >= 25 && step.FontSize < 33 {
 		fontSize = *size32
-		c.SetFontSize(*size32)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size32)>>6))
 	}
 	if step.FontSize >= 17 && step.FontSize < 25 {
 		fontSize = *size25
-		c.SetFontSize(*size25)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size25)>>6))
 	}
 	if step.FontSize <= 16 {
 		fontSize = *size16
-		c.SetFontSize(*size16)
-		pt = freetype.Pt(step.StartX, step.StartY+int(c.PointToFixed(*size16)>>6))
+	}
+
+	font := *fontReguler
+	if step.Bold == 1 {
+		font = *fontBold
+	}
+	if err := dc.LoadFontFace(font, fontSize); err != nil {
+		return
 	}
 
 	fontCol := 32 // rowHeight
@@ -642,11 +609,28 @@ func drawText(rgba draw.Image, step printStep) {
 		fontCol = 64
 	}
 
-	totalCouloum := (step.EndY - step.StartY) / fontCol
-	// totalWidth := ctx.measureText(step.content).width;
-	totalWidth := getWidthUTF8String(step.Content) * (int(fontSize) / 2)
+	align := gg.AlignLeft
+	switch step.AllignX {
+	case 2:
+		{
+			align = gg.AlignRight
+		}
+	case 3:
+		{
+			align = gg.AlignCenter
+		}
+	default:
+		{
+			align = gg.AlignLeft
+		}
+	}
 
-	if totalWidth > (step.EndX-step.StartX) && totalCouloum > 1 {
+	totalCouloum := (step.EndY - step.StartY) / fontCol
+	w, _ := dc.MeasureString(step.Content)
+	totalWidth := w * (float64(fontCol) / 32)
+	// totalWidth := getWidthUTF8String(step.Content) * (int(fontSize) / 2)
+
+	if int(totalWidth) > (step.EndX-step.StartX) && totalCouloum > 1 {
 		colPrinted := 0
 		for j := 0; j < totalCouloum; j++ {
 			notEdgeBorder := true
@@ -654,71 +638,52 @@ func drawText(rgba draw.Image, step printStep) {
 			colWord := colPrinted
 			loop := 1
 			wordPrint := wordArray[colWord]
-			for ok := true; ok; ok = (notEdgeBorder && (colWord < len(wordArray))) {
+			for ok := (notEdgeBorder && (colWord < len(wordArray)-1)); ok; ok = (notEdgeBorder && (colWord < len(wordArray)-1)) {
 				word := wordPrint + " " + wordArray[colWord+loop]
-				wordLength := getWidthUTF8String(word) * (int(fontSize) / 2)
-				if wordLength >= step.EndX-step.StartX || colWord+loop >= len(wordArray)-1 {
-					wordPrint = word
+				w2, _ := dc.MeasureString(word)
+				wordLength := w2 * (float64(fontCol) / 32)
+				// log.Println("Wordlenght", int(wordLength), "X = ", (step.EndX - step.StartX))
+				log.Println("colword+loop", colWord+loop, "lenWOrd ", len(wordArray))
+				if int(wordLength) >= step.EndX-step.StartX || colWord+loop >= len(wordArray)-1 {
 					notEdgeBorder = false
+					log.Println("InEdge or End")
 				} else {
-					wordPrint = word
+					log.Println("Lanjut")
 				}
+				wordPrint = word
 				colPrinted = loop
 				loop = loop + 1
 			}
-
-			gap := step.EndX - step.StartX - (getWidthUTF8String(wordPrint) * (int(fontSize) / 2))
-
-			switch step.AllignX {
-			case 2:
-				{
-					positionX = positionX + gap
-				}
-			case 3:
-				{
-					positionX = positionX + (gap / 2)
-				}
-			default:
-				{
-					positionX = step.StartX
-				}
+			println("TAG WordPrint", wordPrint)
+			dc := gg.NewContext(step.EndX-step.StartX, fontCol)
+			dc.DrawImage(image.Rect(0, 0, step.EndX-step.StartX, step.EndY-step.StartY), 0, 0)
+			dc.SetColor(color.Black)
+			if err := dc.LoadFontFace(font, fontSize); err != nil {
+				return
 			}
-			pt = freetype.Pt(positionX, positionY+(j*fontCol)+int(c.PointToFixed(fontSize)>>6))
-			c.DrawString(wordPrint, pt)
+
+			dc.DrawStringWrapped(wordPrint, 0, 0, 0, 0, float64(step.EndX)-float64(step.StartX), 10, align)
+			draw.Draw(rgba, image.Rect(step.StartX, step.StartY+(j*fontCol), step.EndX, step.StartY+((j+1)*fontCol)-1),
+				dc.Image(), image.ZP, draw.Src)
+			saveImageToFile(dc.Image(), strconv.Itoa(j)+".png")
 		}
 	} else {
-		gap := step.EndX - step.StartX - (getWidthUTF8String(step.Content) * (int(fontSize) / 2))
-
-		switch step.AllignX {
-		case 2:
-			{
-				positionX = positionX + gap
-			}
-		case 3:
-			{
-				positionX = positionX + (gap / 2)
-			}
-		default:
-			{
-				positionX = step.StartX
-			}
-		}
-
-		pt = freetype.Pt(positionX, positionY+int(c.PointToFixed(fontSize)>>6))
-		c.DrawString(step.Content, pt)
+		dc.DrawStringWrapped(step.Content, 0, 0, 0, 0, float64(step.EndX)-float64(step.StartX), 10, align)
+		draw.Draw(rgba, image.Rect(step.StartX, step.StartY, step.EndX, step.EndY),
+			dc.Image(), image.ZP, draw.Src)
 	}
 }
 
-func saveImageToFile(rgba image.Image) {
-	new_png_file := "test.png"
+func saveImageToFile(rgba image.Image, name string) {
+	// new_png_file := "test.png"
 
-	myfile, err := os.Create(new_png_file)
+	myfile, err := os.Create(name)
 	if err != nil {
 		panic(err.Error())
 	}
 	defer myfile.Close()
-	png.Encode(myfile, rgba)              // ... save image
-	fmt.Println("firefox ", new_png_file) // view image issue : firefox  /tmp/chessboard.png
+	png.Encode(myfile, rgba)      // ... save image
+	fmt.Println("firefox ", name) // view image issue : firefox  /tmp/chessboard.png
 }
 
 func rgbaToGray(img image.Image) *image.Gray {
@@ -733,21 +698,4 @@ func rgbaToGray(img image.Image) *image.Gray {
 		}
 	}
 	return gray
-}
-
-func getWidthUTF8String(s string) int {
-	size := 0
-	for _, runeValue := range s {
-		p := width.LookupRune(runeValue)
-		if p.Kind() == width.EastAsianWide {
-			size += 2
-			continue
-		}
-		if p.Kind() == width.EastAsianNarrow {
-			size += 1
-			continue
-		}
-		panic("cannot determine!")
-	}
-	return size
 }
