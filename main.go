@@ -11,7 +11,6 @@ import (
 	"image/png"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/fogleman/gg"
@@ -665,7 +664,6 @@ func drawText(rgba draw.Image, step printStep) {
 			dc.DrawStringWrapped(wordPrint, 0, 0, 0, 0, float64(step.EndX)-float64(step.StartX), 10, align)
 			draw.Draw(rgba, image.Rect(step.StartX, step.StartY+(j*fontCol), step.EndX, step.StartY+((j+1)*fontCol)-1),
 				dc.Image(), image.ZP, draw.Src)
-			saveImageToFile(dc.Image(), strconv.Itoa(j)+".png")
 		}
 	} else {
 		dc.DrawStringWrapped(step.Content, 0, 0, 0, 0, float64(step.EndX)-float64(step.StartX), 10, align)
