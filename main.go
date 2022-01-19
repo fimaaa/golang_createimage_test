@@ -36,7 +36,7 @@ const PRINT_TYPE_LINE = 4
 const PRINT_TYPE_AREA = 5
 const rowHeight = 32
 
-type PrintStep struct {
+type printStep struct {
 	TypePrint     int    `json:"type_print"`
 	StartX        int    `json:"start_x"`
 	EndX          int    `json:"end_x"`
@@ -77,18 +77,18 @@ func main() {
 		w.Write([]byte("For Response Step /Step, For Response Image /image"))
 	})
 	http.HandleFunc("/image", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(makeLabelServiceType(true)))
+		w.Write([]byte(MakeLabelServiceType(true)))
 	})
 	http.HandleFunc("/step", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(makeLabelServiceType(false)))
+		w.Write([]byte(MakeLabelServiceType(false)))
 	})
 
 	fmt.Println("server started at localhost:9000")
 	http.ListenAndServe(":9000", nil)
 }
 
-func makeLabelServiceType(isImage bool) string {
-	stepLabelServiceType := []PrintStep{
+func MakeLabelServiceType(isImage bool) string {
+	stepLabelServiceType := []printStep{
 		{
 			PRINT_TYPE_IMAGE,
 			0,
@@ -463,7 +463,7 @@ func makeLabelServiceType(isImage bool) string {
 	return `{data : ` + string(j) + `}`
 }
 
-func drawCanvas(steps []PrintStep) string {
+func drawCanvas(steps []printStep) string {
 	rgba := image.NewRGBA(image.Rect(0, 0, 576, 950))
 	draw.Draw(rgba, rgba.Bounds(), image.White, image.ZP, draw.Src)
 
@@ -507,7 +507,7 @@ func drawCanvas(steps []PrintStep) string {
 	return base64.RawStdEncoding.EncodeToString(send_s3)
 }
 
-func drawBarcode(rgba draw.Image, step PrintStep) {
+func drawBarcode(rgba draw.Image, step printStep) {
 	bcode, err := code93.Encode("code", false, true)
 
 	if err != nil {
@@ -526,7 +526,7 @@ func drawBarcode(rgba draw.Image, step PrintStep) {
 		bcode, image.ZP, draw.Src)
 }
 
-func drawQRcode(rgba draw.Image, step PrintStep) {
+func drawQRcode(rgba draw.Image, step printStep) {
 	qrCode, err := qr.Encode("Hello World", qr.M, qr.Auto)
 	if err != nil {
 		fmt.Printf("String %s cannot be encoded", "code")
@@ -543,7 +543,7 @@ func drawQRcode(rgba draw.Image, step PrintStep) {
 		qrCode, image.ZP, draw.Src)
 }
 
-func drawImage(rgba draw.Image, step PrintStep) {
+func drawImage(rgba draw.Image, step printStep) {
 	tempContent := strings.Replace(step.Content, "data:image/jpeg;base64,", "", -1)
 	content := strings.Replace(tempContent, "data:image/png;base64,", "", -1)
 	var decodedByte, _ = base64.StdEncoding.DecodeString(content)
@@ -555,14 +555,14 @@ func drawImage(rgba draw.Image, step PrintStep) {
 		rgbaToGray(newImage), image.ZP, draw.Src)
 }
 
-func drawArea(rgba draw.Image, step PrintStep) {
+func drawArea(rgba draw.Image, step printStep) {
 	draw.Draw(rgba, image.Rect(step.StartX, step.StartY, step.EndX, step.EndY),
 		&image.Uniform{color.Black}, image.ZP, draw.Src)
 	draw.Draw(rgba, image.Rect(step.StartX+step.LineWidth, step.StartY+step.LineWidth, step.EndX-step.LineWidth, step.EndY-step.LineWidth),
 		&image.Uniform{color.White}, image.ZP, draw.Src)
 }
 
-func drawText(rgba draw.Image, step PrintStep) {
+func drawText(rgba draw.Image, step printStep) {
 	positionX := step.StartX
 	positionY := step.StartY
 	fg := image.Black
