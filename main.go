@@ -493,7 +493,7 @@ func drawCanvas(steps []printStep) string {
 		default:
 			{
 				// drawText(rgba, step)
-				drawTextGG(rgba, step)
+				drawText(rgba, step)
 			}
 		}
 	}
@@ -562,7 +562,7 @@ func drawArea(rgba draw.Image, step printStep) {
 		&image.Uniform{color.White}, image.ZP, draw.Src)
 }
 
-func drawTextGG(rgba draw.Image, step printStep) {
+func drawText(rgba draw.Image, step printStep) {
 	dc := gg.NewContext(step.EndX-step.StartX, step.EndY-step.StartY)
 
 	dc.DrawImage(image.Rect(0, 0, step.EndX-step.StartX, step.EndY-step.StartY), 0, 0)
