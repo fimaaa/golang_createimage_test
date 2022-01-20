@@ -9,6 +9,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"net/http"
 	"os"
 	"strings"
 
@@ -131,19 +132,19 @@ var (
 )
 
 func main() {
-	// http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte("For Response Step /Step, For Response Image /image"))
-	// })
-	// http.HandleFunc("/image", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte(MakeLabelServiceType(true)))
-	// })
-	// http.HandleFunc("/step", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte(MakeLabelServiceType(false)))
-	// })
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("For Response Step /Step, For Response Image /image"))
+	})
+	http.HandleFunc("/image", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(MakeLabelServiceType(true)))
+	})
+	http.HandleFunc("/step", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(MakeLabelServiceType(false)))
+	})
 
-	// fmt.Println("server started at localhost:9000")
-	// http.ListenAndServe(":9000", nil)
-	MakeLabelServiceType(true)
+	fmt.Println("server started at localhost:9000")
+	http.ListenAndServe(":9000", nil)
+	// MakeLabelServiceType(true)
 }
 
 func MakeLabelServiceType(isImage bool) string {
