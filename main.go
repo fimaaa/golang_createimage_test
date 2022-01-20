@@ -9,14 +9,17 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/fogleman/gg"
 
 	"github.com/boombuler/barcode"
+	"github.com/boombuler/barcode/codabar"
+	"github.com/boombuler/barcode/code128"
+	"github.com/boombuler/barcode/code39"
 	"github.com/boombuler/barcode/code93"
+	"github.com/boombuler/barcode/ean"
 	"github.com/boombuler/barcode/qr"
 
 	"github.com/nfnt/resize"
@@ -33,25 +36,84 @@ const pType_AREA = 5
 const rowHeight = 32
 
 type printStep struct {
-	TypePrint     int    `json:"type_print"`
-	StartX        int    `json:"start_x"`
-	EndX          int    `json:"end_x"`
-	StartY        int    `json:"start_y"`
-	EndY          int    `json:"end_y"`
-	AllignX       int    `json:"allign_x"`
-	AllignY       int    `json:"allign_y"`
-	Rotate        int    `json:"rotate"`
-	FontSize      int    `json:"font_size"`
-	Bold          int    `json:"bold"`
-	Reverse       int    `json:"reverse"`
-	UnderLine     int    `json:"underline"`
-	DeleteLine    int    `json:"delete_line"`
-	Content       string `json:"content"`
-	PBarcodeType  int    `json:"pb_barcode_type"`
-	LineWidth     int    `json:"lindewidth"`
-	HeightBarCode int    `json:"height_barcode"`
-	Lel           int    `json:"lel"`
-	IsSolid       bool   `json:"is_solid"`
+	TypePrint int `json:"type_print"`
+	StartX    int `json:"start_x"`
+	EndX      int `json:"end_x"`
+	StartY    int `json:"start_y"`
+	EndY      int `json:"end_y"`
+	AllignX   int `json:"allign_x"` //  1 -> PAlign.START , 2 -> PAlign.END, 3 -> PAlign.CENTER
+	AllignY   int `json:"allign_y"` //  1 -> PAlign.START , 2 -> PAlign.END, 3 -> PAlign.CENTER
+	Rotate    int `json:"rotate"`   // 1 -> PRotate.Rotate_90, 2 -> PRotate.Rotate_180, 3-> Rotate.Rotate_270 else -> PRotate.Rotate_0
+	FontSize  int `json:"font_size"`
+	/*
+	 				in 0..16 -> LableFontSize.Size_16
+	                in 17..24 -> LableFontSize.Size_24
+	                in 25..32 -> LableFontSize.Size_32
+	                in 33..48 -> LableFontSize.Size_48
+	                in 49..64 -> LableFontSize.Size_64
+	                in 65..72 -> LableFontSize.Size_72
+	                in 73..96 -> LableFontSize.Size_96
+	                else -> LableFontSize.Size_24
+	*/
+	Bold         int    `json:"bold"`        // 1 -> Bold , 0-> Regular
+	Reverse      int    `json:"reverse"`     // 1 -> Reverse, 0 -> Reverse
+	UnderLine    int    `json:"underline"`   // 1 -> Underline, 0 -> normal
+	DeleteLine   int    `json:"delete_line"` // 1 -> DeleteLine, 0 -> normal
+	Content      string `json:"content"`
+	PBarcodeType int    `json:"pb_barcode_type"`
+	/*
+			switch(step.PBarcodeType) {
+		        case 1: {
+		            codeType = "EAN13";
+		            break;
+		        }
+		        case 2:
+		            codeType = "EAN8";
+		            break;
+		        case 4:
+		            codeType = "CODE39";
+		            break;
+		        case 5:
+		            codeType = "CODE93";
+		            break;
+		        case 6:
+		            codeType = "CODE128";
+		            break;
+		        case 7:
+		            codeType = "codabar";
+		            break;
+		        case 9:
+		            codeType = "UPCA";
+		        default:
+		            codeType = "CODE128";
+		            break;
+		        }
+	*/
+	LineWidth     int `json:"lindewidth"`
+	HeightBarCode int `json:"height_barcode"`
+	Lel           int `json:"lel"`
+	/*
+			switch(step.lel) {
+		        case 0 : {
+		          level = "L";
+		          break;
+		        }
+		        case 2 : {
+		          level = "Q";
+		          break;
+		        }
+		        case 3 : {
+		          level = "H";
+		          break;
+		        }
+		        default: {
+		          level = "M";
+		          break;
+		        }
+
+		      }
+	*/
+	IsSolid bool `json:"is_solid"`
 }
 
 var (
@@ -351,7 +413,7 @@ func MakeLabelServiceType(isImage bool) string {
 			pType_TEXT,
 			0,
 			576,
-			(rowHeight * 18),
+			(rowHeight * 18) + 10,
 			(rowHeight * 19),
 			0, 0, 0,
 			24,
@@ -470,7 +532,7 @@ func drawCanvas(steps []printStep) string {
 		switch step.TypePrint {
 		case pType_BARCODE:
 			{
-				drawBarcode(rgba, step)
+				drawBarcode(rgba, step, true)
 			}
 		case pType_QRCODE:
 			{
@@ -491,7 +553,6 @@ func drawCanvas(steps []printStep) string {
 			}
 		default:
 			{
-				// drawText(rgba, step)
 				drawText(rgba, step)
 			}
 		}
@@ -501,24 +562,53 @@ func drawCanvas(steps []printStep) string {
 	png.Encode(buf, rgba)
 	send_s3 := buf.Bytes()
 
-	saveImageToFile(rgba, "test.png")
+	// Kalo Mau Liat Hasil Imagenya
+	// saveImageToFile(rgba, "test.png")
 
 	return base64.RawStdEncoding.EncodeToString(send_s3)
 }
 
-func drawBarcode(rgba draw.Image, step printStep) {
-	bcode, err := code93.Encode("code", false, true)
+func drawBarcode(rgba draw.Image, step printStep, isScaling bool) {
+	bcode, err := code128.EncodeWithoutChecksum(step.Content)
+
+	switch step.PBarcodeType {
+	case 1, 2:
+		{
+			bcode, err = ean.Encode(step.Content)
+			// codeType = "EAN13, EAN8";
+			break
+		}
+	case 4:
+		{
+			bcode, err = code39.Encode(step.Content, false, true)
+			// codeType = "CODE39";
+			break
+		}
+	case 5:
+		{
+			bcode, err = code93.Encode(step.Content, false, true)
+			// codeType = "CODE93";
+		}
+	case 7:
+		{
+			bcode, err = codabar.Encode(step.Content)
+			// codeType = "codabar";
+			break
+		}
+	}
 
 	if err != nil {
 		fmt.Printf("String %s cannot be encoded", "code")
 		return
 	}
 
-	bcode, err = barcode.Scale(bcode, step.EndX-step.StartX, step.EndY-step.StartY)
-
-	if err != nil {
-		fmt.Println("Code128 scaling error!")
-		return
+	if isScaling {
+		bcode, err = barcode.Scale(bcode, step.EndX-step.StartX, step.EndY-step.StartY)
+		if err != nil {
+			fmt.Println("Code128 scaling error!")
+			drawBarcode(rgba, step, false)
+			return
+		}
 	}
 
 	draw.Draw(rgba, image.Rect(step.StartX, step.StartY, step.EndX, step.EndY),
@@ -526,7 +616,27 @@ func drawBarcode(rgba draw.Image, step printStep) {
 }
 
 func drawQRcode(rgba draw.Image, step printStep) {
-	qrCode, err := qr.Encode("Hello World", qr.M, qr.Auto)
+
+	level := qr.H
+	switch step.Lel {
+	case 0:
+		{
+			level = qr.L
+			break
+		}
+	case 1:
+		{
+			level = qr.M
+			break
+		}
+	case 2:
+		{
+			level = qr.Q
+			break
+		}
+	}
+
+	qrCode, err := qr.Encode("Hello World", level, qr.Auto)
 	if err != nil {
 		fmt.Printf("String %s cannot be encoded", "code")
 		return
@@ -641,19 +751,14 @@ func drawText(rgba draw.Image, step printStep) {
 				word := wordPrint + " " + wordArray[colWord+loop]
 				w2, _ := dc.MeasureString(word)
 				wordLength := w2 * (float64(fontCol) / 32)
-				// log.Println("Wordlenght", int(wordLength), "X = ", (step.EndX - step.StartX))
-				log.Println("colword+loop", colWord+loop, "lenWOrd ", len(wordArray))
 				if int(wordLength) >= step.EndX-step.StartX || colWord+loop >= len(wordArray)-1 {
 					notEdgeBorder = false
-					log.Println("InEdge or End")
-				} else {
-					log.Println("Lanjut")
 				}
+
 				wordPrint = word
 				colPrinted = loop
 				loop = loop + 1
 			}
-			println("TAG WordPrint", wordPrint)
 			dc := gg.NewContext(step.EndX-step.StartX, fontCol)
 			dc.DrawImage(image.Rect(0, 0, step.EndX-step.StartX, step.EndY-step.StartY), 0, 0)
 			dc.SetColor(color.Black)
@@ -673,8 +778,6 @@ func drawText(rgba draw.Image, step printStep) {
 }
 
 func saveImageToFile(rgba image.Image, name string) {
-	// new_png_file := "test.png"
-
 	myfile, err := os.Create(name)
 	if err != nil {
 		panic(err.Error())
