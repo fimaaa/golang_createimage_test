@@ -144,7 +144,6 @@ func main() {
 
 	fmt.Println("server started at localhost:9000")
 	http.ListenAndServe(":9000", nil)
-	// MakeLabelServiceType(true)
 }
 
 func MakeLabelServiceType(isImage bool) string {
@@ -196,6 +195,27 @@ func MakeLabelServiceType(isImage bool) string {
 			250,
 			300,
 			0,
+			rowHeight,
+			3,
+			3,
+			0,
+			24,
+			1,
+			0,
+			0,
+			0,
+			"S",
+			0,
+			0,
+			0,
+			0,
+			false,
+		},
+		{
+			pType_TEXT,
+			250,
+			300,
+			rowHeight,
 			(rowHeight) * 2,
 			3,
 			3,
@@ -205,7 +225,7 @@ func MakeLabelServiceType(isImage bool) string {
 			0,
 			0,
 			0,
-			"SC",
+			"C",
 			0,
 			0,
 			0,
